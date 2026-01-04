@@ -5,7 +5,7 @@ from pathlib import Path
 
 from .config import CROPPED_SUFFIX, SCALED_SUFFIX
 from .model import Ops
-from .ops import jpegtran
+from .ops import jpegtran, metadata
 from .ops import scale as scale_op
 
 
@@ -22,6 +22,7 @@ def process_image(fp: Path, ops: Ops) -> Path:
     """
     # Preserve original access/modification times
     orig_stat = fp.stat()
+    fp_src = Path(fp)
 
     # Descale: remove bottom SCALE_HEIGHT pixels if requested
     if ops.descale:
@@ -39,9 +40,19 @@ def process_image(fp: Path, ops: Ops) -> Path:
 
     # Add scale bar if requested
     if ops.scale:
-        print("NOT IMPLEMENTED: scale operation")
         fp_out = fp.with_stem(fp.stem[:-1] + SCALED_SUFFIX)
+        if fp_out == fp_src:
+            bak = fp_src.with_suffix(".bak")
+            fp_src.rename(bak)
+            fp_src = bak
+
+        fp_cropped = fp
         fp = scale_op.add_scale(fp, fp_out)
+        fp_cropped.unlink(missing_ok=True)
+
+    # Restore metadata if requested
+    if not ops.noiptc:
+        fp = metadata.copy(fp_src, fp)
 
     # Restore original timestamps
     os.utime(fp, (orig_stat.st_atime, orig_stat.st_mtime))

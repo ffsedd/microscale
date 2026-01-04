@@ -12,6 +12,7 @@ from .pipeline import process_image
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(prog="microscale")
     p.add_argument("files", nargs="+", type=Path)
+    p.add_argument("--noiptc", action="store_true")
     p.add_argument("--crop", action="store_true")
     p.add_argument("--rotate", action="store_true")
     p.add_argument("--scale", action="store_true")
@@ -31,6 +32,7 @@ def main() -> None:
     )
 
     ops = Ops(
+        noiptc=args.noiptc,
         descale=args.descale,
         crop=args.crop,
         rotate=args.rotate,

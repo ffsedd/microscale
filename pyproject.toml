@@ -5,6 +5,7 @@ description = ""
 requires-python = ">=3.10"
 dependencies = [
     "pillow>=12.1.0",
+    "pyexiv2>=2.15.5",
 ]
 
 [project.scripts]

@@ -6,6 +6,7 @@ from pathlib import Path
 
 @dataclass(frozen=True)
 class Ops:
+    noiptc: bool = False
     crop: bool = False
     descale: bool = False
     rotate: bool = False
