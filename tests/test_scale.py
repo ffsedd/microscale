@@ -8,7 +8,7 @@ import pytest
 from PIL import Image
 
 from microscale.config import SCALE_HEIGHT
-from microscale.ops.concatenate import JpegtranError
+from microscale.ops.jpegtran import JpegtranError
 from microscale.ops.scale import add_scale, calculate_scale_length, lens_label, make_temp_scale
 
 STEM = "2555v1_vi_s_N4_25112210990_39_"

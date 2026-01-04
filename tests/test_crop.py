@@ -1,4 +1,6 @@
 # tests/test_jpegtran_ops.py
+from __future__ import annotations
+
 import tempfile
 from pathlib import Path
 from typing import Any
@@ -14,28 +16,27 @@ from microscale.ops import jpegtran
 def make_image(width: int, height: int) -> Path:
     """Create a temporary JPEG image of given size."""
     fd, tmp_path = tempfile.mkstemp(suffix=".jpg")
-    Path(tmp_path).unlink()  # remove empty file, Pillow will write it
+    Path(tmp_path).unlink()  # Remove empty file; Pillow will write it
     path = Path(tmp_path)
     img = Image.new("RGB", (width, height), (0, 0, 0))
     img.save(path, "JPEG")
     return path
 
 
-@patch("microscale.ops.jpegtran._run")
+@patch("microscale.ops.jpegtran.run_jpegtran")
 def test_crop_wide(mock_run: Any) -> None:
-    """Test cropping a wide image."""
-    w: int = 2000
-    h: int = 1000
-    fp: Path = make_image(w, h)
-    fp_out: Path = fp.with_stem(fp.stem + CROPPED_SUFFIX)
+    """Test cropping a wide image calls jpegtran with correct arguments."""
+    w, h = 2000, 1000
+    fp = make_image(w, h)
+    fp_out = fp.with_stem(fp.stem + CROPPED_SUFFIX)
 
-    out: Path = jpegtran.crop(fp, fp_out)
+    out = jpegtran.crop(fp, fp_out)
 
-    # Output filename
+    # Output path correctness
     assert out == fp_out
     assert out.stem.endswith(CROPPED_SUFFIX)
 
-    # _run called once
+    # run_jpegtran was called
     mock_run.assert_called_once()
     crop_args: list[str] = mock_run.call_args[0][0]
     assert "-crop" in crop_args
@@ -44,33 +45,33 @@ def test_crop_wide(mock_run: Any) -> None:
     fp.unlink()
 
 
-@patch("microscale.ops.jpegtran._run")
+@patch("microscale.ops.jpegtran.run_jpegtran")
 def test_crop_too_narrow(mock_run: Any) -> None:
-    """Test crop raises ValueError if image is too narrow."""
-    w: int = 800
-    h: int = 1000  # ratio < TARGET_RATIO
-    fp: Path = make_image(w, h)
-    fp_out: Path = fp.with_stem(fp.stem + CROPPED_SUFFIX)
+    """Test crop raises ValueError if image aspect ratio is too narrow."""
+    w, h = 800, 1000  # ratio < TARGET_RATIO
+    fp = make_image(w, h)
+    fp_out = fp.with_stem(fp.stem + CROPPED_SUFFIX)
 
     with pytest.raises(ValueError):
         jpegtran.crop(fp, fp_out)
 
+    # run_jpegtran should not have been called
     mock_run.assert_not_called()
     fp.unlink()
 
 
-@patch("microscale.ops.jpegtran._run")
+@patch("microscale.ops.jpegtran.run_jpegtran")
 def test_descale(mock_run: Any) -> None:
-    """Test descale reduces height by SCALE_HEIGHT (rounded)."""
-    w: int = 500
-    h: int = 200
-    fp: Path = make_image(w, h)
-    fp_out: Path = fp.with_stem(fp.stem + SCALED_SUFFIX)
+    """Test descale calls jpegtran to reduce height by SCALE_HEIGHT (rounded to block)."""
+    w, h = 500, 200
+    fp = make_image(w, h)
+    fp_out = fp.with_stem(fp.stem + SCALED_SUFFIX)
 
-    out: Path = jpegtran.descale(fp, fp_out)
+    out = jpegtran.descale(fp, fp_out)
 
     assert out == fp_out
     assert out.stem.endswith(SCALED_SUFFIX)
+
     mock_run.assert_called_once()
     args: list[str] = mock_run.call_args[0][0]
     assert "-crop" in args
@@ -79,12 +80,12 @@ def test_descale(mock_run: Any) -> None:
     fp.unlink()
 
 
-@patch("microscale.ops.jpegtran._run")
+@patch("microscale.ops.jpegtran.run_jpegtran")
 def test_rotate(mock_run: Any) -> None:
-    """Test rotate calls jpegtran correctly."""
-    fp: Path = make_image(100, 100)
+    """Test rotate calls jpegtran correctly for 180° in-place rotation."""
+    fp = make_image(100, 100)
 
-    out: Path = jpegtran.rotate(fp)
+    out = jpegtran.rotate(fp)
 
     mock_run.assert_called_once()
     args: list[str] = mock_run.call_args[0][0]

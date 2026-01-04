@@ -2,33 +2,15 @@ from __future__ import annotations
 
 import logging
 import shutil
-import subprocess
 import tempfile
 from pathlib import Path
 from typing import Literal
 
 from PIL import Image
 
-JPEGTRAN_EXE = "jpegtran"
+from .jpegtran import run_jpegtran
+
 MetadataOption = Literal["all", "exif", "iptc", "none"]
-
-
-class JpegtranError(Exception):
-    """jpegtran execution failure."""
-
-
-def run_jpegtran(args: list[str]) -> None:
-    """Run jpegtran and raise a clean, informative error on failure."""
-    try:
-        subprocess.run(
-            args,
-            check=True,
-            capture_output=True,
-            text=True,
-        )
-    except subprocess.CalledProcessError as e:
-        msg = e.stderr.strip() if e.stderr else "jpegtran failed with no stderr"
-        raise JpegtranError(msg) from None
 
 
 def enlarge_with_jpegtran(
@@ -46,7 +28,6 @@ def enlarge_with_jpegtran(
         return path
 
     cmd = [
-        JPEGTRAN_EXE,
         "-copy",
         metadata,
         "-perfect",
@@ -104,7 +85,6 @@ def concatenate(
 
         drop_geo = f"+0+{h}"
         cmd_drop = [
-            JPEGTRAN_EXE,
             "-copy",
             metadata,
             "-perfect",
