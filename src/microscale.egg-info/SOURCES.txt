@@ -1,6 +1,7 @@
 pyproject.toml
 src/microscale/__init__.py
 src/microscale/cli.py
+src/microscale/config.py
 src/microscale/model.py
 src/microscale/pipeline.py
 src/microscale.egg-info/PKG-INFO
@@ -12,5 +13,6 @@ src/microscale.egg-info/top_level.txt
 src/microscale/ops/exif.py
 src/microscale/ops/jpegtran.py
 src/microscale/ops/scale.py
+tests/test_crop.py
 tests/test_pipeline.py
 tests/test_smoke.py
