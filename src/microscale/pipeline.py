@@ -14,9 +14,6 @@ def process_image(fp: Path, ops: Ops) -> Path:
     if ops.crop:
         fp = jpegtran.crop(fp)
 
-    if ops.descale:
-        jpegtran.descale(fp)
-
     if ops.rotate:
         jpegtran.rotate(fp)
 

@@ -12,13 +12,9 @@ from .pipeline import process_image
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(prog="microscale")
     p.add_argument("files", nargs="+", type=Path)
-
     p.add_argument("--crop", action="store_true")
-    p.add_argument("--descale", action="store_true")
     p.add_argument("--rotate", action="store_true")
-    p.add_argument("--no-scale", dest="scale", action="store_false")
-    p.add_argument("--no-iptc", dest="iptc", action="store_false")
-
+    p.add_argument("--scale", action="store_true")
     p.add_argument("-j", "--jobs", type=int, default=0)
     p.add_argument("-v", "--verbose", action="count", default=0)
 
@@ -35,10 +31,8 @@ def main() -> None:
 
     ops = Ops(
         crop=args.crop,
-        descale=args.descale,
         rotate=args.rotate,
         scale=args.scale,
-        iptc=args.iptc,
     )
 
     jobs = [(fp, ops) for fp in args.files]
