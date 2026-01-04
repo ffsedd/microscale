@@ -10,58 +10,51 @@ from ..config import SCALE_HEIGHT, TARGET_RATIO
 
 logger = logging.getLogger(__name__)
 
+JPEGTRAN = "jpegtran"
+JPEG_BLOCK = 8  # jpegtran requires multiples of 8
+
 
 def _run(args: list[str]) -> None:
     """
     Run a jpegtran command safely.
-
-    Args:
-        args: List of arguments for jpegtran (excluding the executable itself).
-
-    Raises:
-        subprocess.CalledProcessError: If jpegtran fails.
     """
-    subprocess.run(["jpegtran", *args], check=True)
+    subprocess.run([JPEGTRAN, *args], check=True)
 
 
-def _crop_geometry(fp: Path, w: int, h: int) -> str:
+def _round_down_block(x: int, block: int = JPEG_BLOCK) -> int:
+    return x - (x % block)
+
+
+def _crop_geometry(w: int, h: int, target_ratio: float) -> str:
     """
-    Compute the crop geometry string for a wide JPEG to match TARGET_RATIO.
+    Compute jpegtran crop geometry for a wide image.
 
-    The width is adjusted to fit the target ratio; height remains unchanged.
-    Both width and height are rounded down to multiples of 8, as required by jpegtran.
-
-    Args:
-        fp: Path to the image file (used for logging purposes).
-        w: Original image width in pixels.
-        h: Original image height in pixels.
-
-    Returns:
-        A string suitable for the "-crop" argument of jpegtran, e.g., "1160x1000+20+0".
+    Width is reduced to match target_ratio, height unchanged.
+    Geometry is centered horizontally and block-aligned.
     """
-    new_w = int(h * TARGET_RATIO)
-    crop_w = new_w - (new_w % 8)
-    crop_h = h - (h % 8)
+    new_w = int(h * target_ratio)
+    crop_w = _round_down_block(new_w)
+    crop_h = _round_down_block(h)
     left = (w - crop_w) // 2
-    top = 0
-    return f"{crop_w}x{crop_h}+{left}+{top}"
+    return f"{crop_w}x{crop_h}+{left}+0"
 
 
-def descale(fp: Path, fp_out: Path) -> Path:
+def descale(
+    fp: Path,
+    fp_out: Path,
+    scale_height: int = SCALE_HEIGHT,
+) -> Path:
     """
-    Lossless removal of SCALE_HEIGHT pixels from the bottom of a JPEG.
-
-    Args:
-        fp: Path to the input JPEG file.
-        fp_out: Path to save the descaled output file.
-
-    Returns:
-        Path to the descaled JPEG.
+    Lossless removal of scale bar from the bottom of a JPEG.
     """
     with Image.open(fp) as im:
         w, h = im.size
 
-    crop_h = h - SCALE_HEIGHT - ((h - SCALE_HEIGHT) % 8)
+    new_h = h - scale_height
+    if new_h <= 0:
+        raise ValueError(f"{fp.name}: scale height larger than image")
+
+    crop_h = _round_down_block(new_h)
     crop_str = f"{w}x{crop_h}+0+0"
 
     _run(["-crop", crop_str, "-outfile", str(fp_out), str(fp)])
@@ -69,30 +62,24 @@ def descale(fp: Path, fp_out: Path) -> Path:
     return fp_out
 
 
-def crop(fp: Path, fp_out: Path) -> Path:
+def crop(
+    fp: Path,
+    fp_out: Path,
+    target_ratio: float = TARGET_RATIO,
+) -> Path:
     """
-    Crop a JPEG to TARGET_RATIO (lossless) by trimming left and right sides if too wide.
-
-    Raises a ValueError if the image is not wide enough to crop.
-
-    Args:
-        fp: Path to the input JPEG file.
-        fp_out: Path to save the cropped output file.
-
-    Returns:
-        Path to the cropped JPEG.
+    Lossless crop to target aspect ratio by trimming left/right sides.
     """
     with Image.open(fp) as im:
         w, h = im.size
-    current_ratio = w / h
 
-    if current_ratio > TARGET_RATIO:
-        crop_str = _crop_geometry(fp, w, h)
-    else:
+    current_ratio = w / h
+    if current_ratio <= target_ratio:
         raise ValueError(
-            f"{fp.name}: Cannot crop - image ratio {current_ratio:.3f} < target {TARGET_RATIO}"
+            f"{fp.name}: Cannot crop - image ratio {current_ratio:.3f} < target {target_ratio}"
         )
 
+    crop_str = _crop_geometry(w, h, target_ratio)
     _run(["-crop", crop_str, "-outfile", str(fp_out), str(fp)])
     logger.info("%s: Crop done -> %s", fp.name, fp_out.name)
     return fp_out
@@ -101,12 +88,6 @@ def crop(fp: Path, fp_out: Path) -> Path:
 def rotate(fp: Path) -> Path:
     """
     Lossless rotate a JPEG image 180° in place.
-
-    Args:
-        fp: Path to the input JPEG file.
-
-    Returns:
-        The same Path as input (rotated in place).
     """
     _run(["-rotate", "180", "-outfile", str(fp), str(fp)])
     logger.info("%s: Rotation done", fp.name)
