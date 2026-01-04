@@ -8,7 +8,7 @@ def test_pipeline_smoke(tmp_path: Path) -> None:
     fp = tmp_path / "a.jpg"
     fp.write_bytes(b"fake")
 
-    ops = Ops(scale=False, iptc=False)
+    ops = Ops(scale=False)
     out = process_image(fp, ops)
 
     assert out.exists()

@@ -15,6 +15,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--crop", action="store_true")
     p.add_argument("--rotate", action="store_true")
     p.add_argument("--scale", action="store_true")
+    p.add_argument("--descale", action="store_true")
     p.add_argument("-j", "--jobs", type=int, default=0)
     p.add_argument("-v", "--verbose", action="count", default=0)
 
@@ -30,10 +31,14 @@ def main() -> None:
     )
 
     ops = Ops(
+        descale=args.descale,
         crop=args.crop,
         rotate=args.rotate,
         scale=args.scale,
     )
+
+    if args.descale and args.crop:
+        raise ValueError("Cannot use both --descale and --crop")
 
     jobs = [(fp, ops) for fp in args.files]
 

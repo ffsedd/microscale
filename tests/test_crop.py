@@ -13,9 +13,10 @@ from microscale.ops import jpegtran
 
 def make_image(width: int, height: int) -> Path:
     """Create a temporary JPEG image of given size."""
-    tmp: tempfile._TemporaryFileWrapper = tempfile.NamedTemporaryFile(suffix=".jpg", delete=False)  # type: ignore
-    path: Path = Path(tmp.name)
-    img: Image.Image = Image.new("RGB", (width, height), (0, 0, 0))
+    fd, tmp_path = tempfile.mkstemp(suffix=".jpg")
+    Path(tmp_path).unlink()  # remove empty file, Pillow will write it
+    path = Path(tmp_path)
+    img = Image.new("RGB", (width, height), (0, 0, 0))
     img.save(path, "JPEG")
     return path
 
@@ -26,17 +27,19 @@ def test_crop_wide(mock_run: Any) -> None:
     w: int = 2000
     h: int = 1000
     fp: Path = make_image(w, h)
+    fp_out: Path = fp.with_stem(fp.stem + CROPPED_SUFFIX)
 
-    out: Path = jpegtran.crop(fp)
+    out: Path = jpegtran.crop(fp, fp_out)
 
     # Output filename
+    assert out == fp_out
     assert out.stem.endswith(CROPPED_SUFFIX)
 
     # _run called once
     mock_run.assert_called_once()
     crop_args: list[str] = mock_run.call_args[0][0]
     assert "-crop" in crop_args
-    assert str(out) in crop_args
+    assert str(fp_out) in crop_args
 
     fp.unlink()
 
@@ -47,9 +50,10 @@ def test_crop_too_narrow(mock_run: Any) -> None:
     w: int = 800
     h: int = 1000  # ratio < TARGET_RATIO
     fp: Path = make_image(w, h)
+    fp_out: Path = fp.with_stem(fp.stem + CROPPED_SUFFIX)
 
     with pytest.raises(ValueError):
-        jpegtran.crop(fp)
+        jpegtran.crop(fp, fp_out)
 
     mock_run.assert_not_called()
     fp.unlink()
@@ -61,14 +65,16 @@ def test_descale(mock_run: Any) -> None:
     w: int = 500
     h: int = 200
     fp: Path = make_image(w, h)
+    fp_out: Path = fp.with_stem(fp.stem + SCALED_SUFFIX)
 
-    out: Path = jpegtran.descale(fp)
+    out: Path = jpegtran.descale(fp, fp_out)
 
+    assert out == fp_out
     assert out.stem.endswith(SCALED_SUFFIX)
     mock_run.assert_called_once()
     args: list[str] = mock_run.call_args[0][0]
     assert "-crop" in args
-    assert str(out) in args
+    assert str(fp_out) in args
 
     fp.unlink()
 

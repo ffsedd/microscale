@@ -10,7 +10,6 @@ class Ops:
     descale: bool = False
     rotate: bool = False
     scale: bool = True
-    iptc: bool = True
 
 
 @dataclass(frozen=True)

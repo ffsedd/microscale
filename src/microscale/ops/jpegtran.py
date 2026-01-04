@@ -6,7 +6,7 @@ from pathlib import Path
 
 from PIL import Image
 
-from ..config import CROPPED_SUFFIX, SCALE_HEIGHT, SCALED_SUFFIX, TARGET_RATIO
+from ..config import SCALE_HEIGHT, TARGET_RATIO
 
 logger = logging.getLogger(__name__)
 
@@ -47,31 +47,29 @@ def _crop_geometry(fp: Path, w: int, h: int) -> str:
     return f"{crop_w}x{crop_h}+{left}+{top}"
 
 
-def descale(fp: Path) -> Path:
+def descale(fp: Path, fp_out: Path) -> Path:
     """
-    Remove a bottom SCALE_HEIGHT strip from a JPEG image (lossless).
-
-    Useful for removing a scale bar from microscope images.
-    The output filename receives the SCALED_SUFFIX.
+    Lossless removal of SCALE_HEIGHT pixels from the bottom of a JPEG.
 
     Args:
         fp: Path to the input JPEG file.
+        fp_out: Path to save the descaled output file.
 
     Returns:
-        Path to the descaled output JPEG.
+        Path to the descaled JPEG.
     """
     with Image.open(fp) as im:
         w, h = im.size
 
     crop_h = h - SCALE_HEIGHT - ((h - SCALE_HEIGHT) % 8)
     crop_str = f"{w}x{crop_h}+0+0"
-    out = fp.with_stem(fp.stem + SCALED_SUFFIX)
-    _run(["-crop", crop_str, "-outfile", str(out), str(fp)])
-    logger.info("%s: Descale done -> %s", fp.name, out.name)
-    return out
+
+    _run(["-crop", crop_str, "-outfile", str(fp_out), str(fp)])
+    logger.info("%s: Descale done -> %s", fp.name, fp_out.name)
+    return fp_out
 
 
-def crop(fp: Path) -> Path:
+def crop(fp: Path, fp_out: Path) -> Path:
     """
     Crop a JPEG to TARGET_RATIO (lossless) by trimming left and right sides if too wide.
 
@@ -79,9 +77,10 @@ def crop(fp: Path) -> Path:
 
     Args:
         fp: Path to the input JPEG file.
+        fp_out: Path to save the cropped output file.
 
     Returns:
-        Path to the cropped JPEG with CROPPED_SUFFIX added to the stem.
+        Path to the cropped JPEG.
     """
     with Image.open(fp) as im:
         w, h = im.size
@@ -94,10 +93,9 @@ def crop(fp: Path) -> Path:
             f"{fp.name}: Cannot crop - image ratio {current_ratio:.3f} < target {TARGET_RATIO}"
         )
 
-    out = fp.with_stem(fp.stem + CROPPED_SUFFIX)
-    _run(["-crop", crop_str, "-outfile", str(out), str(fp)])
-    logger.info("%s: Crop done -> %s", fp.name, out.name)
-    return out
+    _run(["-crop", crop_str, "-outfile", str(fp_out), str(fp)])
+    logger.info("%s: Crop done -> %s", fp.name, fp_out.name)
+    return fp_out
 
 
 def rotate(fp: Path) -> Path:
